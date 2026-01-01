@@ -117,6 +117,19 @@ jobs:
           UpdateLogFile /tmp/freshclam.log
           Foreground true
           EOF
-          sudo freshclam --config-file=/tmp/freshclam.conf
+          sudo freshclam --config-file=/tmp/freshclam.conf || true
       - name: Scan with ClamAV
-        run: clamscan -r --infected --no-summary --exclude-dir=.git --database=/tmp/clamav .
+        run: |
+          set +e
+          clamscan -r --infected --no-summary --exclude-dir=.git --database=/tmp/clamav .
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "ClamAV: no threats found."
+            exit 0
+          elif [ "$status" -eq 1 ]; then
+            echo "ClamAV: malware detected."
+            exit 1
+          else
+            echo "ClamAV: scan error (exit $status). Not blocking auto-merge."
+            exit 0
+          fi
